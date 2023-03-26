@@ -1,15 +1,15 @@
 <script setup lang="ts">
+import { estimateTokens, getMemoryList } from '@/utils'
 import {
-  IconPlusCircle,
-  IconRefresh,
   IconDelete,
   IconHistory,
+  IconImage,
+  IconPlusCircle,
+  IconRefresh,
   IconSettings,
-  IconStop,
-  IconImage
+  IconStop
 } from '@arco-design/web-vue/es/icon'
 import { emit } from '@tauri-apps/api/event'
-import { estimateTokens, getMemoryList } from '@/utils'
 
 const { currentRole, textAreaValue } = storeToRefs(useRoleStore())
 
@@ -99,6 +99,15 @@ const functions = computed(() => [
   }
 ])
 
+enum SelectOptions {
+  image = 'image',
+  text = 'text'
+}
+// # 用户选择新建对话时的handle函数
+const handleToSelect = (value: SelectOptions) => {
+  value
+}
+
 const triggerScroll = () => {
   emit('scroll-to-bottom')
 }
@@ -151,6 +160,25 @@ const triggerScroll = () => {
             </a-button>
           </a-popconfirm>
         </template>
+        <!-- 新对话时给与用户选择对话模式 -->
+        <a-dropdown
+          v-else-if="item.content === '新建对话'"
+          position="top"
+          @select="handleToSelect"
+        >
+          <a-button type="text" :disabled="item.disabled">
+            <template #icon>
+              <component
+                :is="item.icon"
+                class="text-5.5 text-[var(--color-text-2)]"
+              />
+            </template>
+          </a-button>
+          <template #content>
+            <a-doption :value="SelectOptions.image">图像生成模式</a-doption>
+            <a-doption :value="SelectOptions.text">AI对话模式</a-doption>
+          </template>
+        </a-dropdown>
         <a-button
           type="text"
           :disabled="item.disabled"
