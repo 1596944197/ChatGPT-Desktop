@@ -1,8 +1,8 @@
 import type {
-  SessionPayload,
-  SessionData,
   MessageData,
-  MessageType
+  MessageType,
+  SessionData,
+  SessionPayload
 } from '@/types'
 
 export const useSessionStore = defineStore(
@@ -18,6 +18,13 @@ export const useSessionStore = defineStore(
     const isThinking = ref(false)
     // 停止请求
     const chatController = ref<AbortController>()
+    // 当前会话的类型：图像、文本、语音
+    const currentSessionMsgType = ref<MessageType>('text')
+
+    // 设置当前会话的类型
+    const setCurrentMsgType = (value: MessageType) => {
+      currentSessionMsgType.value = value
+    }
 
     // 获取会话列表
     const getSessionList = async () => {
@@ -156,7 +163,9 @@ export const useSessionStore = defineStore(
       getSessionList,
       deleteSession,
       updateSession,
-      chatController
+      chatController,
+      currentSessionMsgType,
+      setCurrentMsgType
     }
   },
   {

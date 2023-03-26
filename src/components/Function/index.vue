@@ -14,7 +14,8 @@ import { emit } from '@tauri-apps/api/event'
 const { currentRole, textAreaValue } = storeToRefs(useRoleStore())
 
 const sessionStore = useSessionStore()
-const { switchSession, deleteSession, updateSessionData } = sessionStore
+const { switchSession, deleteSession, updateSessionData, setCurrentMsgType } =
+  sessionStore
 const { isThinking, sessionDataList, chatController } =
   storeToRefs(sessionStore)
 
@@ -105,7 +106,8 @@ enum SelectOptions {
 }
 // # 用户选择新建对话时的handle函数
 const handleToSelect = (value: SelectOptions) => {
-  value
+  setCurrentMsgType(value)
+  switchSession()
 }
 
 const triggerScroll = () => {
