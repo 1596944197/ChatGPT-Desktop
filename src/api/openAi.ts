@@ -1,30 +1,105 @@
-import { Body } from '@tauri-apps/api/http'
+import type { MessageData } from '@/types'
 import {
   fetchEventSource,
   type EventSourceMessage
 } from '@microsoft/fetch-event-source'
-import type { MessageData } from '@/types'
 
 /**
  * 获取 openai 对话消息
  * @param messages 消息列表
  */
-export const getOpenAIResultApi = async (messages: MessageData[]) => {
-  if (!messages.length) return
-
+export const getOpenAIResultApi = async (value?: string) => {
   const apiKey = getOpenAIKey()
   if (!apiKey) return
 
-  return await request(`/v1/chat/completions`, {
-    method: 'POST',
-    body: Body.json({
-      model: OPEN_AI_MODEL,
-      messages
-    }),
-    headers: {
-      Authorization: `Bearer ${apiKey}`
+  const { isThinking, sessionDataList } = storeToRefs(useSessionStore())
+  const { updateSessionData, addSessionData } = useSessionStore()
+
+  try {
+    const messages: MessageData[] = []
+
+    if (!value) {
+      // 重复上一次提问
+      const { sessionDataList } = useSessionStore()
+
+      const lastQuestion = sessionDataList.filter((item) => item.is_ask).at(-1)
+      if (!lastQuestion) return
+
+      const deleteSql = `DELETE FROM session_data WHERE session_id = '${lastQuestion?.session_id}' AND id >= ${lastQuestion?.id};`
+      await executeSQL(deleteSql)
+
+      messages.push(lastQuestion.message)
+    } else {
+      messages.push({
+        role: 'user',
+        content: value
+      })
     }
-  })
+
+    isThinking.value = true
+
+    await addSessionData({
+      isAsk: true,
+      data: messages.at(-1)!
+    })
+
+    // 官方参数 https://platform.openai.com/docs/api-reference/images/create
+    const RequestConfig = {
+      prompt: value,
+      n: 1,
+      size: '256x256',
+      response_format: 'url', // 'url' | 'b64_json 我电脑使用b64会导致死机
+      user: ''
+    }
+
+    const {
+      proxy: { bypass, url: proxyURL }
+    } = useSettingsStore()
+
+    let url = '/v1/images/generations'
+
+    if (bypass && proxyURL) {
+      url = proxyURL + url
+    } else {
+      url = HOST_URL.OPENAI + url
+    }
+
+    const response: {
+      created: number
+      data: {
+        b64_json: string
+        url: string
+      }[]
+    } = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(RequestConfig),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'content-type': 'application/json'
+      }
+    }).then((res) => res.json())
+
+    let content = ''
+    if (response.data instanceof Array) {
+      response.data.forEach(({ url }) => {
+        content += `![图片](${url}) \n\n`
+      })
+    }
+
+    await addSessionData({
+      isAsk: false,
+      data: {
+        role: 'assistant',
+        content
+      }
+    })
+  } catch ({ message }: any) {
+    sessionDataList.value.at(-1)!.message.content = message as any
+  } finally {
+    updateSessionData(sessionDataList.value.at(-1)!)
+
+    isThinking.value = false
+  }
 }
 
 /**

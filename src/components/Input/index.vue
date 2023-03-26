@@ -29,7 +29,11 @@ const onKeydown = (event: KeyboardEvent) => {
       popoverVisible.value = false
       // }
 
-      getAiMessage(value)
+      if (recordStore.currentSessionMsgType === 'image') {
+        getOpenAIResultApi(value)
+      } else {
+        getAiMessage(value)
+      }
 
       textAreaElement.value?.blur()
       textAreaValue.value = ''
